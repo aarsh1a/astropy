@@ -6,19 +6,18 @@ Handles the "FITS" unit format.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from astropy.units.core import CompositeUnit
 from astropy.units.errors import UnitScaleError
 from astropy.utils import classproperty
 
-from . import Base, core, utils
+from . import Base, utils
 from .generic import _GenericParserMixin
 
 if TYPE_CHECKING:
-    from typing import Literal
-
     from astropy.units import UnitBase
 
 
@@ -85,7 +84,7 @@ class FITS(Base, _GenericParserMixin):
             # all values in FITS are set that way.  So, instead do it
             # here, and use a unity-scale unit for the rest.
             parts.append(f"10**{int(base)}")
-            unit = core.CompositeUnit(1, unit.bases, unit.powers)
+            unit = CompositeUnit(1, unit.bases, unit.powers)
 
         if unit.bases:
             parts.append(super().to_string(unit, fraction=fraction))

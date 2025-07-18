@@ -31,7 +31,6 @@ from astropy.coordinates.representation import (
     UnitSphericalRepresentation,
 )
 from astropy.tests.helper import assert_quantity_allclose as assert_allclose_quantity
-from astropy.utils import isiterable
 from astropy.utils.compat import COPY_IF_NEEDED
 from astropy.utils.exceptions import DuplicateRepresentationWarning
 
@@ -308,7 +307,7 @@ class TestSphericalRepresentation:
         assert_allclose_quantity(s_slc.distance, [1, 1, 1] * u.kpc)
 
         assert len(s) == 10
-        assert isiterable(s)
+        assert np.iterable(s)
 
     def test_getitem_len_iterable_scalar(self):
         s = SphericalRepresentation(lon=1 * u.deg, lat=-2 * u.deg, distance=3 * u.kpc)
@@ -317,7 +316,7 @@ class TestSphericalRepresentation:
             s_slc = s[0]
         with pytest.raises(TypeError):
             len(s)
-        assert not isiterable(s)
+        assert not np.iterable(s)
 
     def test_setitem(self):
         s = SphericalRepresentation(
@@ -1446,6 +1445,14 @@ class TestCylindricalRepresentation:
         assert_allclose(sph.theta, 0 * u.deg)
         assert cyl.phi == 23.5 * u.deg  # phi is preserved exactly
 
+    def test_to_physicsspherical_small_theta(self):
+        """Test that the transformation to physicsspherical is accurate for small theta."""
+        cyl = CylindricalRepresentation(rho=1 * u.m, phi=10 * u.deg, z=1e8 * u.m)
+        got = cyl.represent_as(PhysicsSphericalRepresentation)
+        assert_allclose(got.r, 1e8 * u.m)
+        assert_allclose(got.phi, 10 * u.deg)
+        assert_allclose(got.theta, 1e-8 * u.rad)
+
 
 class TestUnitSphericalCosLatDifferential:
     @pytest.mark.parametrize("matrix", list(matrices.values()))
@@ -1669,10 +1676,9 @@ def test_subclass_representation():
 
     class Longitude180(Longitude):
         def __new__(cls, angle, unit=None, wrap_angle=180 * u.deg, **kwargs):
-            self = super().__new__(
+            return super().__new__(
                 cls, angle, unit=unit, wrap_angle=wrap_angle, **kwargs
             )
-            return self
 
     class SphericalWrap180Representation(SphericalRepresentation):
         attr_classes = {"lon": Longitude180, "lat": Latitude, "distance": u.Quantity}

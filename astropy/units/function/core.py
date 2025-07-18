@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from collections.abc import Collection
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 
@@ -26,10 +27,7 @@ else:
     from numpy._core import umath as np_umath
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
-    from typing import Self
-
-    from astropy.units.typing import UnitPower
+    from astropy.units.typing import PhysicalTypeID
 
 __all__ = ["FunctionQuantity", "FunctionUnitBase"]
 
@@ -195,7 +193,7 @@ class FunctionUnitBase(metaclass=ABCMeta):
         return self._copy(self.physical_unit.cgs)
 
     @cached_property
-    def _physical_type_id(self) -> tuple[tuple[str, UnitPower], ...]:
+    def _physical_type_id(self) -> PhysicalTypeID:
         """Get physical type corresponding to physical unit."""
         return self.physical_unit._physical_type_id
 
@@ -437,7 +435,7 @@ class FunctionUnitBase(metaclass=ABCMeta):
                 # functional string is aligned with the fraction line
                 # (second one), and all other lines are indented
                 # accordingly.
-                f = f"{{0:^{len(self_str)+1}s}}{{1:s}}"
+                f = f"{{0:^{len(self_str) + 1}s}}{{1:s}}"
                 lines = [
                     f.format("", pu_lines[0]),
                     f.format(f"{self_str}(", f"{pu_lines[1]})"),

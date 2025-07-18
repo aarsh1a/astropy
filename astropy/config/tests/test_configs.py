@@ -206,6 +206,29 @@ def test_generate_config2(tmp_path):
     check_config(conf)
 
 
+def test_generate_config_subclasses(tmp_path):
+    """Test that generate_config works with subclasses of ConfigNamespace."""
+    from astropy.config.configuration import ConfigItem, ConfigNamespace
+
+    class MyPackageNamespace(ConfigNamespace):
+        pass
+
+    class RecursiveTestConf(MyPackageNamespace):
+        ti = ConfigItem(5, "this is a Description")
+
+    with set_temp_config(tmp_path):
+        from astropy.config.configuration import generate_config
+
+        generate_config("astropy")
+
+    assert os.path.exists(tmp_path / "astropy" / "astropy.cfg")
+
+    with open(tmp_path / "astropy" / "astropy.cfg") as fp:
+        conf = fp.read()
+
+    assert "# ti = 5" in conf
+
+
 def test_create_config_file(tmp_path, caplog):
     with set_temp_config(tmp_path):
         create_config_file("astropy")
@@ -427,10 +450,11 @@ def test_config_noastropy_fallback(monkeypatch):
 
     # make sure the _find_or_create_root_dir function fails as though the
     # astropy dir could not be accessed
-    def osraiser(dirnm, linkto, pkgname=None):
+    @classmethod
+    def osraiser(cls, linkto, pkgname=None):
         raise OSError
 
-    monkeypatch.setattr(paths, "_find_or_create_root_dir", osraiser)
+    monkeypatch.setattr(paths._SetTempPath, "_find_or_create_root_dir", osraiser)
 
     # also have to make sure the stored configuration objects are cleared
     monkeypatch.setattr(configuration, "_cfgobjs", {})

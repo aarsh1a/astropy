@@ -178,6 +178,32 @@ class TestHDUListFunctions(FitsTestCase):
         with pytest.raises(ValueError):
             hdul.append(hdu)
 
+    @pytest.mark.parametrize(
+        "image", ["scale.fits", "o4sp040b0_raw.fits", "fixed-1890.fits"]
+    )
+    @pytest.mark.parametrize("do_not_scale", [True, False])
+    def test_append_scaled_image_with_do_not_scale_image_data(
+        self, image, do_not_scale
+    ):
+        """Tests appending a scaled ImageHDU to a HDUList."""
+
+        with fits.open(
+            self.data(image), do_not_scale_image_data=do_not_scale
+        ) as source:
+            # create the file
+            dest = fits.HDUList()
+            dest.append(source[0])
+            # append a second hdu
+            dest.append(source[0])
+            assert dest[-1].header.get("BZERO") == source[0].header.get("BZERO")
+            assert dest[-1].header.get("BSCALE") == source[0].header.get("BSCALE")
+            dest.writeto(self.temp("test-append.fits"))
+        with fits.open(
+            self.temp("test-append.fits"), do_not_scale_image_data=do_not_scale
+        ) as tmphdu:
+            assert tmphdu[-1].header.get("BZERO") == source[0].header.get("BZERO")
+            assert tmphdu[-1].header.get("BSCALE") == source[0].header.get("BSCALE")
+
     def test_insert_primary_to_empty_list(self):
         """Tests inserting a Simple PrimaryHDU to an empty HDUList."""
         hdul = fits.HDUList()
@@ -682,7 +708,11 @@ class TestHDUListFunctions(FitsTestCase):
             assert hdul[0].header == orig_header[:-1]
             assert (hdul[0].data == data).all()
 
-        if sys.platform.startswith("win") and not NUMPY_LT_2_0:
+        if (
+            sys.platform.startswith("win")
+            and sys.version_info < (3, 14)
+            and not NUMPY_LT_2_0
+        ):
             ctx = pytest.warns(
                 UserWarning,
                 match="Memory map object was closed but appears to still be referenced",

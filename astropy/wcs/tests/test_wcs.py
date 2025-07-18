@@ -21,7 +21,7 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.io.fits.verify import VerifyWarning
 from astropy.nddata import Cutout2D
-from astropy.tests.helper import PYTEST_LT_8_0, assert_quantity_allclose
+from astropy.tests.helper import assert_quantity_allclose
 from astropy.utils.data import (
     get_pkg_data_contents,
     get_pkg_data_filename,
@@ -569,22 +569,15 @@ def test_crpix_maps_to_crval():
     )
 
 
-def test_all_world2pix(
-    fname=None,
-    ext=0,
-    tolerance=1.0e-4,
-    origin=0,
-    random_npts=25000,
-    adaptive=False,
-    maxiter=20,
-    detect_divergence=True,
-):
+def test_all_world2pix():
     """Test all_world2pix, iterative inverse of all_pix2world"""
 
+    tolerance = 1.0e-4
+    origin = 0
+
     # Open test FITS file:
-    if fname is None:
-        fname = get_pkg_data_filename("data/j94f05bgq_flt.fits")
-        ext = ("SCI", 1)
+    fname = get_pkg_data_filename("data/j94f05bgq_flt.fits")
+    ext = ("SCI", 1)
     if not os.path.isfile(fname):
         raise OSError(f"Input file '{fname:s}' to 'test_all_world2pix' not found.")
     h = fits.open(fname)
@@ -608,7 +601,7 @@ def test_all_world2pix(
 
     # Generate random data (in image coordinates):
     with NumpyRNGContext(123456789):
-        rnd_pix = np.random.rand(random_npts, ncoord)
+        rnd_pix = np.random.rand(25_000, ncoord)
 
     # Scale random data to cover the central part of the image
     mwidth = 2 * (crpix * 1.0 / 8)
@@ -627,9 +620,9 @@ def test_all_world2pix(
             all_world,
             origin,
             tolerance=tolerance,
-            adaptive=adaptive,
-            maxiter=maxiter,
-            detect_divergence=detect_divergence,
+            adaptive=False,
+            maxiter=20,
+            detect_divergence=True,
         )
         runtime_end = datetime.now()
     except wcs.wcs.NoConvergence as e:
@@ -970,14 +963,12 @@ def test_sip_tpv_agreement():
         os.path.join("data", "tpvonly.hdr"), encoding="binary"
     )
 
-    if PYTEST_LT_8_0:
-        ctx = nullcontext()
-    else:
-        ctx = pytest.warns(
+    with (
+        pytest.warns(wcs.FITSFixedWarning),
+        pytest.warns(
             AstropyWarning, match="Some non-standard WCS keywords were excluded"
-        )
-
-    with pytest.warns(wcs.FITSFixedWarning), ctx:
+        ),
+    ):
         w_sip = wcs.WCS(sip_header)
         w_tpv = wcs.WCS(tpv_header)
 
@@ -1014,24 +1005,17 @@ def test_tpv_ctype_sip():
     sip_header["CTYPE1"] = "RA---TAN-SIP"
     sip_header["CTYPE2"] = "DEC--TAN-SIP"
 
-    if PYTEST_LT_8_0:
-        ctx1 = ctx2 = nullcontext()
-    else:
-        ctx1 = pytest.warns(
-            wcs.FITSFixedWarning, match=".*RADECSYS keyword is deprecated, use RADESYSa"
-        )
-        ctx2 = pytest.warns(
-            wcs.FITSFixedWarning, match=".*Set MJD-OBS to .* from DATE-OBS"
-        )
-
     with (
         pytest.warns(
             wcs.FITSFixedWarning,
             match="Removed redundant SCAMP distortion parameters "
             "because SIP parameters are also present",
         ),
-        ctx1,
-        ctx2,
+        pytest.warns(
+            wcs.FITSFixedWarning,
+            match=".*RADECSYS keyword is deprecated, use RADESYSa",
+        ),
+        pytest.warns(wcs.FITSFixedWarning, match=".*Set MJD-OBS to .* from DATE-OBS"),
     ):
         w_sip = wcs.WCS(sip_header)
 
@@ -1049,24 +1033,17 @@ def test_tpv_ctype_tpv():
     sip_header["CTYPE1"] = "RA---TPV"
     sip_header["CTYPE2"] = "DEC--TPV"
 
-    if PYTEST_LT_8_0:
-        ctx1 = ctx2 = nullcontext()
-    else:
-        ctx1 = pytest.warns(
-            wcs.FITSFixedWarning, match=".*RADECSYS keyword is deprecated, use RADESYSa"
-        )
-        ctx2 = pytest.warns(
-            wcs.FITSFixedWarning, match=".*Set MJD-OBS to .* from DATE-OBS"
-        )
-
     with (
         pytest.warns(
             wcs.FITSFixedWarning,
             match="Removed redundant SIP distortion parameters "
             "because CTYPE explicitly specifies TPV distortions",
         ),
-        ctx1,
-        ctx2,
+        pytest.warns(
+            wcs.FITSFixedWarning,
+            match=".*RADECSYS keyword is deprecated, use RADESYSa",
+        ),
+        pytest.warns(wcs.FITSFixedWarning, match=".*Set MJD-OBS to .* from DATE-OBS"),
     ):
         w_sip = wcs.WCS(sip_header)
 
@@ -1084,24 +1061,17 @@ def test_tpv_ctype_tan():
     sip_header["CTYPE1"] = "RA---TAN"
     sip_header["CTYPE2"] = "DEC--TAN"
 
-    if PYTEST_LT_8_0:
-        ctx1 = ctx2 = nullcontext()
-    else:
-        ctx1 = pytest.warns(
-            wcs.FITSFixedWarning, match=".*RADECSYS keyword is deprecated, use RADESYSa"
-        )
-        ctx2 = pytest.warns(
-            wcs.FITSFixedWarning, match=".*Set MJD-OBS to .* from DATE-OBS"
-        )
-
     with (
         pytest.warns(
             wcs.FITSFixedWarning,
             match="Removed redundant SIP distortion parameters "
             "because SCAMP' PV distortions are also present",
         ),
-        ctx1,
-        ctx2,
+        pytest.warns(
+            wcs.FITSFixedWarning,
+            match=".*RADECSYS keyword is deprecated, use RADESYSa",
+        ),
+        pytest.warns(wcs.FITSFixedWarning, match=".*Set MJD-OBS to .* from DATE-OBS"),
     ):
         w_sip = wcs.WCS(sip_header)
 
@@ -1447,6 +1417,25 @@ def test_naxis():
     assert w.pixel_bounds is None
 
 
+def test_naxis_1d():
+    w = wcs.WCS(
+        {
+            "naxis1": 100,
+            "crval1": 1,
+            "cdelt1": 0.1,
+            "crpix1": 1,
+        }
+    )
+    assert w.pixel_shape == (100,)
+    assert w.array_shape == (100,)
+
+    w.pixel_shape = (99,)
+    assert w._naxis == [99]
+
+    w.pixel_shape = None
+    assert w.pixel_bounds is None
+
+
 def test_sip_with_altkey():
     """
     Test that when creating a WCS object using a key, CTYPE with
@@ -1473,14 +1462,13 @@ def test_to_fits_1():
     """
     fits_name = get_pkg_data_filename("data/dist.fits")
 
-    if PYTEST_LT_8_0:
-        ctx = nullcontext()
-    else:
-        ctx = pytest.warns(
-            wcs.FITSFixedWarning, match="The WCS transformation has more axes"
-        )
-
-    with pytest.warns(AstropyDeprecationWarning), ctx:
+    with (
+        pytest.warns(AstropyDeprecationWarning),
+        pytest.warns(
+            wcs.FITSFixedWarning,
+            match="The WCS transformation has more axes",
+        ),
+    ):
         w = wcs.WCS(fits_name)
     wfits = w.to_fits()
     assert isinstance(wfits, fits.HDUList)
@@ -1753,13 +1741,8 @@ def test_distortion_header(tmp_path):
     cen = np.array((50, 50))
     size = np.array((20, 20))
 
-    if PYTEST_LT_8_0:
-        ctx = nullcontext()
-    else:
-        ctx = pytest.warns(VerifyWarning)
-
     with fits.open(path) as hdulist:
-        with ctx, pytest.warns(wcs.FITSFixedWarning):
+        with pytest.warns(VerifyWarning), pytest.warns(wcs.FITSFixedWarning):
             w = wcs.WCS(hdulist[0].header)
         cut = Cutout2D(hdulist[0].data, position=cen, size=size, wcs=w)
 
